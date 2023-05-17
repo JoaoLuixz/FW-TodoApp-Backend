@@ -1,5 +1,4 @@
 var mongoose = require('mongoose');
-
 var userSchema = new mongoose.Schema({
     nome: {
         unique: true,
@@ -8,16 +7,9 @@ var userSchema = new mongoose.Schema({
     senha: {
         type: String
     },
-    isAdmin:
-    {
-        default: false,
-        type: Boolean
-    }, //
 },
     {
-        versionKey: false,
-    },
-
-
+        versionKey: false
+    }
 );
 module.exports = mongoose.model('User', userSchema)

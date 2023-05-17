@@ -5,7 +5,7 @@ const router = express.Router()
 module.exports = router;
 const modeloTarefa = require('../models/tarefa');
 
-router.post('/post', async (req, res) => {
+router.post('/post', verificaJWT, async (req, res) => {
     const objetoTarefa = new modeloTarefa({
         descricao: req.body.descricao,
         statusRealizada: req.body.statusRealizada
@@ -20,7 +20,8 @@ router.post('/post', async (req, res) => {
 })
 
 // 1º parte
-router.get('/getAll', async (req, res) => {
+router.get('/getAll', verificaJWT, async (req, res, next) => {
+
     try {
         const resultados = await modeloTarefa.find();
         res.json(resultados)
@@ -31,7 +32,7 @@ router.get('/getAll', async (req, res) => {
 })
 
 
-router.delete('/delete/:id', async (req, res) => {
+router.delete('/delete/:id', verificaJWT, async (req, res) => {
     try {
         const resultado = await modeloTarefa.findByIdAndDelete(req.params.id)
         res.json(resultado)
@@ -41,7 +42,7 @@ router.delete('/delete/:id', async (req, res) => {
     }
 })
 
-router.patch('/update/:id', async (req, res) => {
+router.patch('/update/:id', verificaJWT, async (req, res) => {
     try {
         const id = req.params.id;
         const novaTarefa = req.body;
@@ -58,7 +59,7 @@ router.patch('/update/:id', async (req, res) => {
 
 // 2º parte
 
-router.get('/Tarefas/search', async (req, res) => {
+router.get('/Tarefas/search', verificaJWT, async (req, res) => {
     const { descricao } = req.query;
     try {
         const resultados = await modeloTarefa.find({ descricao: new RegExp(descricao, 'i') });
@@ -71,7 +72,7 @@ router.get('/Tarefas/search', async (req, res) => {
 
 // localhost:3000/api/Tarefas/search?descricao=again
 
-router.delete('/Tarefas', async (req, res) => {
+router.delete('/Tarefas', verificaJWT, async (req, res) => {
     try {
         await tarefa.deleteMany({});
         res.send({ message: 'AI CARAMBA!!! Todas as tarefas foram deletadas!' });
@@ -82,7 +83,7 @@ router.delete('/Tarefas', async (req, res) => {
 });
 
 
-router.delete('/Tarefas/completas', async (req, res) => {
+router.delete('/Tarefas/completas', verificaJWT, async (req, res) => {
     try {
         await tarefa.deleteMany({ statusRealizada: true });
         res.send({ message: 'AI CARAMBA!!! Todas as tarefas completas foram removidas!!!' });
@@ -92,6 +93,71 @@ router.delete('/Tarefas/completas', async (req, res) => {
     }
 });
 
+
+
+
+
+
+// Autorizacao
+function verificaUsuarioSenha(req, res, next) {
+    if (req.body.nome !== 'branqs' || req.body.senha !== '1234') {
+        return res.status(401).json({ auth: false, message: 'Usuario ou Senha incorreta' });
+    }
+    next();
+}
+
+// Autenticacao (mudar usuário e senha aqui)
+// var jwt = require('jsonwebtoken');
+// router.post('/login', (req, res, next) => {
+//     if (req.body.nome === 'Joao' && req.body.senha === '222') {
+//         const token = jwt.sign({ id: req.body.nome }, 'AICARAMBA', { expiresIn: 300 });
+//         return res.json({ auth: true, token: token });
+//     }
+//     res.status(500).json({ message: 'Login invalido!' });
+// })
+
+
+//Segunda forma de Autenticacao - Busca usuário no BD e compara senha
+const userModel = require('../models/user');
+var jwt = require('jsonwebtoken');
+router.post('/login', async (req, res) => {
+    try {
+        const data = await userModel.findOne({ 'nome': req.body.nome });
+        
+        
+        // admin
+        // if (data != null && data.senha === "admin") {
+        //     const token = jwt.sign({ id: req.body.user }, 'AICARAMBA',
+        //         { expiresIn: 300 });
+        //     return res.json({ token: token });
+        // }
+
+        if (data != null && data.senha === req.body.senha) {
+            const token = jwt.sign({ id: req.body.user }, 'AICARAMBA',
+                { expiresIn: 300 });
+            return res.json({ token: token });
+        }
+
+        res.status(500).json({ message: 'Login invalido!' });
+    } catch (error) {
+        res.status(500).json({ message: error.message })
+    }
+})
+
+
+
+
+// Nova forma de Autorizacao
+function verificaJWT(req, res, next) {
+    const token = req.headers['id-token'];
+    if (!token) return res.status(401).json({
+        auth: false, message: 'Token nao fornecido'
+    });
+    jwt.verify(token, 'AICARAMBA', function (err, decoded) {
+        if (err) return res.status(500).json({ auth: false, message: 'Falha !' });
+        next();
+    });
+}
 // Parte do undo
 // localhost:3000/api/Tarefas/search?descricao=again
 
